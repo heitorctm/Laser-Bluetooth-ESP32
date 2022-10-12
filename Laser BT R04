@@ -1,0 +1,127 @@
+//para versão com teclado e não bluetooth ir para R03
+//desafio: conseguir colocar os dois no mesmo arquivo
+
+//Bluetooth
+#include "BluetoothSerial.h"
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run make menuconfig to and enable it
+#endif
+
+//servo motor
+#include <Servo_ESP32.h>
+Servo_ESP32 servoX;
+Servo_ESP32 servoY;
+#define POS_INICIAL 90
+#define X_MINIMO    30 
+#define Y_MINIMO    30 
+#define INTERVALO_X 12 
+#define INTERVALO_Y 8
+
+#define LASER       4
+#define TEMPO       20
+
+BluetoothSerial SerialBT;
+
+
+int posicaoY;
+int posicaoX;
+char movimento;
+char mensagemBT;
+char mensagemDigitada;
+String mensagemNoTerminal = "";
+
+static const int servoPinX = 26;
+static const int servoPinY = 27;
+
+void setup() {
+  configInicial();
+}
+
+void loop() {
+  movimentoBtSerial();
+}
+
+// FUNÇÕES
+void configInicial(){
+  Serial.begin(115200);
+  SerialBT.begin("ESP HEITOR"); //nome que seu microcontrolador irá aparecer.
+  servoX.attach(servoPinX);
+  servoY.attach(servoPinY);
+  servoX.write(POS_INICIAL);
+  servoY.write(POS_INICIAL);
+  posicaoX = POS_INICIAL;
+  posicaoY = POS_INICIAL;
+  pinMode(LASER, OUTPUT);  
+  digitalWrite(LASER, LOW);
+}
+
+void movimentoBtSerial() {
+  if(SerialBT.available() > 0) {
+    mensagemBT = SerialBT.read();
+    Serial.println(movimento);
+    if(mensagemBT != '\n') {
+      mensagemNoTerminal += mensagemBT;  
+      } else {
+        mensagemNoTerminal = "";
+      }
+    Serial.println(mensagemNoTerminal);
+          //LIGA LASER
+    if(mensagemNoTerminal == "on"){
+        digitalWrite(LASER, HIGH);
+      }
+          //BAIXO
+    if(mensagemNoTerminal == "d"){
+        posicaoY+= 10;
+        servoY.write(posicaoY); 
+      }
+          //CIMA
+    if(mensagemNoTerminal == "u"){
+        posicaoY -= 10;
+        servoY.write(posicaoY);
+      }
+          //ESQUERDA
+      if(mensagemNoTerminal == "l"){
+        posicaoX -= 10;
+        servoX.write(posicaoX); 
+      }
+          //DIREITA
+      if(mensagemNoTerminal == "r"){
+        posicaoX += 10;
+        servoX.write(posicaoX);
+      }
+      if(mensagemNoTerminal == "a"){
+        randomServos();
+      }
+          //PARAR O LASER
+      if(mensagemNoTerminal == "off"){
+        servoX.write(POS_INICIAL);
+        delay(10);
+        servoY.write(POS_INICIAL);
+        delay(10);
+        posicaoX = POS_INICIAL;
+        posicaoY = POS_INICIAL;
+        delay(10);
+        digitalWrite(LASER, LOW);
+      }
+    //codigo para impedir que a variável que armazena
+    //posição vá para angulo maior que motor suporta ou que eu queira
+    if(posicaoX < 0) {
+      posicaoX = 0;
+    }
+    if(posicaoX > 180) {
+      posicaoX = 180;
+    }
+    if(posicaoY < 10) {
+      posicaoY = 10;
+    }
+    if(posicaoY > 90) {
+      posicaoY = 90;
+    }
+  }
+}
+  void randomServos(){
+      posicaoX = (random(0,18)*10);
+      posicaoY = (random(0,9)*10);
+      servoX.write(posicaoX);
+      servoY.write(posicaoY);
+  }
